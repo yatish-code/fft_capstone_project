@@ -1,0 +1,130 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && (
+        (request.auth.token.email == 'murali87925@gmail.com' && request.auth.token.email_verified == true) ||
+        (request.auth.token.email == 'yashugowda88888@gmail.com' && request.auth.token.email_verified == true) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin')
+      );
+    }
+
+    function isManager() {
+      return isSignedIn() && (
+        (request.auth.token.email == 'scharanbabu9964@gmail.com' && request.auth.token.email_verified == true) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'manager')
+      );
+    }
+
+    function isVendor() {
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'vendor';
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // User Profile Rules
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.name is string && data.name.size() <= 100 &&
+               data.email is string && data.email.size() <= 100 &&
+               data.role in ['superadmin', 'manager', 'vendor', 'customer'] &&
+               (resource == null ? (data.createdAt is string || data.createdAt is timestamp) : data.createdAt == resource.data.createdAt);
+      }
+
+      allow get: if isOwner(userId) || isSuperAdmin() || isManager();
+      allow list: if isSuperAdmin() || isManager();
+      allow create: if isSignedIn() && isValidUser(incoming()) && request.auth.uid == userId;
+      allow update: if (isOwner(userId) || isSuperAdmin()) && isValidUser(incoming()) &&
+                    (isSuperAdmin() || incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'partnerName', 'weddingDate', 'venue', 'city', 'phone', 'status', 'business']));
+    }
+
+    // Booking Rules
+    match /bookings/{bookingId} {
+      function isValidBooking(data) {
+        return data.userId is string && data.packageType is string &&
+               data.totalAmount is number && data.totalAmount >= 0;
+      }
+
+      allow read: if isSignedIn() && (isOwner(existing().userId) || isSuperAdmin() || isManager() || isVendor());
+      allow list: if isSuperAdmin() || isManager() || isVendor() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && isValidBooking(incoming()) && (isOwner(incoming().userId) || isSuperAdmin() || isManager());
+      allow update: if (isSuperAdmin() || isManager() || isVendor() || (isOwner(existing().userId) && incoming().userId == existing().userId)) &&
+                    isValidBooking(incoming()) &&
+                    (isSuperAdmin() || isManager() || incoming().diff(existing()).affectedKeys().hasOnly(['specialRequests', 'weddingDate', 'status', 'bookedAt']));
+      
+      // Subcollection for events
+      match /events/{eventId} {
+        allow read: if isSignedIn() && (isOwner(get(/databases/$(database)/documents/bookings/$(bookingId)).data.userId) || isSuperAdmin() || isManager() || isVendor());
+        allow write: if isSuperAdmin() || isManager() || isVendor();
+      }
+    }
+
+    // Team Rules
+    match /team/{memberId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin() || isManager() || isVendor();
+    }
+
+    // Payment Rules
+    match /payments/{paymentId} {
+      allow read: if isSignedIn() && (isOwner(existing().userId) || isSuperAdmin() || isManager() || isVendor());
+      allow create: if isSuperAdmin() || isManager(); // Only super-admin or manager can record payments
+      allow update: if isSuperAdmin() || isManager();
+    }
+
+    // Media Rules
+    match /media/{userId}/items/{mediaId} {
+      allow read: if isOwner(userId) || isSuperAdmin() || isManager() || isVendor();
+      allow write: if isSuperAdmin() || isManager() || isVendor(); 
+    }
+
+    // Gallery Rules (Public)
+    match /gallery/{itemId} {
+      allow read: if true;
+      allow write: if isSuperAdmin() || isManager() || isVendor();
+    }
+
+    // Chat / Messages
+    match /conversations/{convId}/messages/{msgId} {
+      allow read, write: if isSignedIn() && (convId.contains(request.auth.uid) || isSuperAdmin() || isManager());
+    }
+
+    // Feedback Rules
+    match /feedbacks/{feedbackId} {
+      function isValidFeedback(data) {
+        return data.userId is string && data.message is string && data.message.size() <= 2000;
+      }
+      allow read: if isSuperAdmin() || isManager();
+      allow list: if isSuperAdmin() || isManager();
+      allow create: if isSignedIn() && isValidFeedback(incoming()) && request.auth.uid == incoming().userId;
+    }
+  }
+}

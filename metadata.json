@@ -1,0 +1,6 @@
+{
+  "name": "WeddingBliss",
+  "description": "A comprehensive wedding events booking and management platform with automated workflows, real-time tracking, and beautiful client portals.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,180 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile information including wedding specifics and roles.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "customer"] },
+        "partnerName": { "type": "string" },
+        "weddingDate": { "type": "string", "format": "date-time" },
+        "venue": { "type": "string" },
+        "city": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["active", "pending", "blocked"] }
+      },
+      "required": ["name", "email", "role", "createdAt"]
+    },
+    "Booking": {
+      "title": "Wedding Booking",
+      "description": "Main booking record for a wedding package.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "packageType": { "type": "string", "enum": ["silver", "gold", "platinum", "custom"] },
+        "totalAmount": { "type": "number" },
+        "advancePaid": { "type": "number" },
+        "balanceDue": { "type": "number" },
+        "paymentStatus": { "type": "string", "enum": ["unpaid", "partial", "paid", "overdue"] },
+        "bookedAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "in-progress", "completed", "cancelled"] },
+        "specialRequests": { "type": "string" },
+        "assignedTeam": { "type": "array", "items": { "type": "string" } },
+        "weddingDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "packageType", "totalAmount"]
+    },
+    "Event": {
+      "title": "Event Component",
+      "description": "A specific event within a wedding journey (e.g., Haldi, Mehendi).",
+      "type": "object",
+      "properties": {
+        "eventName": { "type": "string" },
+        "eventDate": { "type": "string", "format": "date-time" },
+        "eventTime": { "type": "string" },
+        "venue": { "type": "string" },
+        "servicesIncluded": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["upcoming", "confirmed", "completed"] },
+        "notes": { "type": "string" }
+      },
+      "required": ["eventName", "eventDate", "status"]
+    },
+    "Media": {
+      "title": "Media Item",
+      "description": "Photo or video content delivered to the customer.",
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" },
+        "thumbnailUrl": { "type": "string" },
+        "category": { "type": "string" },
+        "eventType": { "type": "string" },
+        "uploadedAt": { "type": "string", "format": "date-time" },
+        "isDelivered": { "type": "boolean" },
+        "description": { "type": "string" },
+        "type": { "type": "string", "enum": ["photo", "video", "reel", "drone"] },
+        "duration": { "type": "string" }
+      },
+      "required": ["url", "type", "uploadedAt"]
+    },
+    "TeamMember": {
+      "title": "Team Member",
+      "description": "Staff member profile and availability.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["photographer", "videographer", "coordinator", "editor"] },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "availability": { "type": "array", "items": { "type": "string" } },
+        "assignedBookings": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["name", "role"]
+    },
+    "Payment": {
+      "title": "Payment Record",
+      "description": "Financial transaction history.",
+      "type": "object",
+      "properties": {
+        "bookingId": { "type": "string" },
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["advance", "mid", "final"] },
+        "status": { "type": "string", "enum": ["pending", "received", "cancelled"] },
+        "date": { "type": "string", "format": "date-time" },
+        "razorpayId": { "type": "string" },
+        "invoiceUrl": { "type": "string" }
+      },
+      "required": ["bookingId", "userId", "amount", "status"]
+    },
+    "GalleryItem": {
+      "title": "Public Gallery Item",
+      "description": "Media displayed on the public landing page.",
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" },
+        "category": { "type": "string" },
+        "isFeatured": { "type": "boolean" },
+        "uploadedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["url", "category"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Single message in a conversation.",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string" },
+        "text": { "type": "string" },
+        "fileUrl": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["senderId", "text", "timestamp"]
+    },
+    "Feedback": {
+      "title": "Customer Feedback",
+      "description": "Feedback or experience report shared by a customer.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "rating": { "type": "number" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "isRead": { "type": "boolean" }
+      },
+      "required": ["userId", "message", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles."
+    },
+    "/bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Wedding bookings."
+    },
+    "/bookings/{bookingId}/events/{eventId}": {
+      "schema": "Event",
+      "description": "Specific events tied to a booking."
+    },
+    "/media/{userId}/items/{mediaId}": {
+      "schema": "Media",
+      "description": "Media assets for a user."
+    },
+    "/team/{memberId}": {
+      "schema": "TeamMember",
+      "description": "Internal team members."
+    },
+    "/payments/{paymentId}": {
+      "schema": "Payment",
+      "description": "Payment transactions."
+    },
+    "/gallery/{itemId}": {
+      "schema": "GalleryItem",
+      "description": "Public exhibition gallery."
+    },
+    "/conversations/{convId}/messages/{msgId}": {
+      "schema": "Message",
+      "description": "Chat messages."
+    },
+    "/feedbacks/{feedbackId}": {
+      "schema": "Feedback",
+      "description": "User feedback and experiences."
+    }
+  }
+}
